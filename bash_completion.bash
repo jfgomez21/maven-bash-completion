@@ -197,7 +197,7 @@ _mvn()
     ## some plugin (like jboss-as) has '-' which is not allowed in shell var name, to use '_' then replace
     local common_plugins=`compgen -v | grep "^plugin_goals_.*" | sed 's/plugin_goals_//g' | tr '_' '-' | tr '\n' '|'`
 
-    local options="-Dmaven.test.skip=true|-DskipTests|-DskipITs|-Dtest|-Dit.test|-DfailIfNoTests|-Dmaven.surefire.debug|-DenableCiProfile|-Dpmd.skip=true|-Dcheckstyle.skip=true|-Dtycho.mode=maven|-Dmaven.javadoc.skip=true|-Dgwt.compiler.skip|-Dcobertura.skip=true|-Dfindbugs.skip=true||-DperformRelease=true|-Dgpg.skip=true|-DforkCount"
+    local options="-Dmaven.test.skip=true|-DskipTests|-DskipITs|-Dtest=|-Dit.test|-DfailIfNoTests|-Dmaven.surefire.debug|-DenableCiProfile|-Dpmd.skip=true|-Dcheckstyle.skip=true|-Dtycho.mode=maven|-Dmaven.javadoc.skip=true|-Dgwt.compiler.skip|-Dcobertura.skip=true|-Dfindbugs.skip=true||-DperformRelease=true|-Dgpg.skip=true|-DforkCount"
 
     local profile_settings=`[ -e ~/.m2/settings.xml ] && grep -e "<profile>" -A 1 ~/.m2/settings.xml | grep -e "<id>.*</id>" | sed 's/.*<id>//' | sed 's/<\/id>.*//g' | tr '\n' '|' `
     
@@ -210,8 +210,33 @@ _mvn()
 
     local IFS=$'|\n'
 
-    if [[ ${cur} == -D* ]] ; then
-      COMPREPLY=( $(compgen -S ' ' -W "${options}" -- ${cur}) )
+    $(echo ${COMP_WORDS[@]} >> /tmp/dummy)
+
+    if [[ ${prev} == = ]] ; then
+        local index=$((${#COMP_WORDS[@]}-3))
+        local flag=${COMP_WORDS[${index}]}
+
+        if [[ ${flag} == -Dtest ]] ; then
+		if [[ ${cur} == *#* ]] ; then
+		      #TODO - Get list of all test methods for a given test class
+		      $(echo $(echo ${cur} | cut -d'#' -f1) >> /tmp/dummy)
+		      COMPREPLY=( $(compgen -S ' ' -W  "TestParseAction#testMethodOne|TestMain#testOne|TestMain#testTwo" -- ${cur}) )
+		else
+		      #TODO - Get list of all test class with at least one test method
+		      COMPREPLY=( $(compgen -S ' ' -W  "TestParseAction|TestMain" -- ${cur}) )
+		fi
+        fi
+    elif [[ ${prev} == -Dtest ]] && [[ ${cur} == = ]] ; then
+      #TODO - Get list of all test class with at least one test method
+      COMPREPLY=( $(compgen -S ' ' -W "TestParseAction|TestMain") )
+    elif [[ ${cur} == -D* ]] ; then
+        local value=( $(compgen -S ' ' -W "${options}" -- ${cur}) )
+
+        if [[ ${value} == *=\  ]] ; then
+            value=$(echo "${value}" | sed "s/[ ]*$//")
+        fi        
+
+        COMPREPLY=( ${value} )
 
     elif [[ ${prev} == -P ]] ; then
       if [[ ${cur} == *,* ]] ; then
